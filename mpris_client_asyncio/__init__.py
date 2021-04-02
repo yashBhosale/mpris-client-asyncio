@@ -2,7 +2,6 @@ import dbussy as dbus
 from dbussy import DBUS
 import ravel
 import asyncio
-import extras
 
 class MPRISController:
     mpris_base = 'org.mpris.MediaPlayer2'
@@ -13,6 +12,8 @@ class MPRISController:
 
 
     async def connect(self):
+        """ Connects the MPRISController object to dbus.
+        """
         self.conn = await ravel.session_bus_async(asyncio.get_running_loop())
         self.dbus_daemon = ravel.def_proxy_interface(ravel.INTERFACE.CLIENT,
                                             name="DbusDaemon",
@@ -30,6 +31,9 @@ class MPRISController:
 
     # Base
     def listen_propchanged(self, func):
+        """ Create an event listener for the PropertiesChanged event.
+
+        """
         self.conn.listen_signal(path = "/org/mpris/MediaPlayer2",
                                 fallback = False,
                                 interface = "org.freedesktop.DBus.Properties",
@@ -38,19 +42,25 @@ class MPRISController:
     
 
     async def send_raise(self, name):
+        """ Bring media player with this name to the foreground, if possible. 
+            If it can't (e.g. the media player doesn't support this), nothing happens.
+
+        """
         return await self.send_simple_command(name, 'Raise', self.mpris_base)
 
 
     async def send_quit(self, name):
+        """ Cause the media player to quit.
+            If it can't (e.g. the media player doesn't support this), nothing happens.
+            
+        """
         return await self.send_simple_command(name, 'Quit', self.mpris_base)
 
 
-    # Player
-    def set_seeked_func(self, f):
-        self.seeked_func = f
-
-
     def listen_seeked(self, f):
+        """ Create an event listener for the Seeked event.
+
+        """
         self.conn.listen_signal(path = "/org/mpris/MediaPlayer2",
                                 fallback = False,
                                 interface = "org.mpris.MediaPlayer2.Player",
@@ -59,6 +69,8 @@ class MPRISController:
 
 
     async def send_simple_command(self, name, method, interface):
+        """ Hit <method> in <interface> of <name>, 
+        """
         request = dbus.Message.new_method_call(destination = dbus.valid_bus_name("org.mpris.MediaPlayer2." + name),
                                                 path = "/org/mpris/MediaPlayer2",
                                                 iface = interface,
@@ -67,22 +79,41 @@ class MPRISController:
 
 
     async def send_play(self, name):
+        """ Cause the media player to start playing.
+            If it can't (e.g. the media player doesn't support this), nothing happens.
+        """
         return await self.send_simple_command(name, 'Play', self.player_interface)
 
 
     async def send_pause (self, name):
+        """ Cause the media player to pause.
+            If it can't (e.g. the media player doesn't support this), nothing happens.
+            
+        """
         return await self.send_simple_command(name, 'Pause', self.player_interface)
 
 
     async def send_next (self, name):
+        """ Cause the media player to go to the next track.
+            If it can't (e.g. the media player doesn't support this), nothing happens.
+            
+        """
         return await self.send_simple_command(name, 'Next', self.player_interface)
 
 
     async def send_playpause (self, name):
+        """ Cause the media player to toggle the play/pause state.
+            If it can't (e.g. the media player doesn't support this), nothing happens.
+            
+        """
         return await self.send_simple_command(name, 'PlayPause', self.player_interface)
 
 
     async def open_uri(self, name, uri):
+        """ Cause the media player to open the uri.
+            If it can't (e.g. the media player doesn't support this), nothing happens.
+            
+        """
         request = dbus.Message.new_method_call(destination = dbus.valid_bus_name("org.mpris.MediaPlayer2." + name),
                                                 path = "/org/mpris/MediaPlayer2",
                                                 iface = 'org.mpris.MediaPlayer2.Player',
@@ -92,8 +123,10 @@ class MPRISController:
         return reply
 
 
-    # Playlists
     def listen_playlist_changed(self, f):
+        """ Create an event listener for the PlaylistChanged event.
+
+        """
         self.conn.listen_signal(path = "/org/mpris/MediaPlayer2",
                                 fallback = False,
                                 interface = "org.mpris.MediaPlayer2.Playlists",
@@ -102,6 +135,10 @@ class MPRISController:
 
 
     async def send_activate_playlist(self, name, playlist_id):
+        """ Cause the media player to activate a specific playlist.
+            If it can't (e.g. the media player doesn't support this), nothing happens.
+            
+        """
         request = dbus.Message.new_method_call(destination = dbus.valid_bus_name("org.mpris.MediaPlayer2." + name),
                                                 path = "/org/mpris/MediaPlayer2",
                                                 iface = 'org.mpris.MediaPlayer2.Playlists',
@@ -112,6 +149,10 @@ class MPRISController:
 
 
     async def send_get_playlists(self, name, index: int, max_count: int, order: str, reverse_order: bool):
+        """ Get the object urls for the playlists.
+            If it can't (e.g. the media player doesn't support this), nothing happens.
+            
+        """
         request = dbus.Message.new_method_call(destination = dbus.valid_bus_name("org.mpris.MediaPlayer2." + name),
                                                 path = "/org/mpris/MediaPlayer2",
                                                 iface = 'org.mpris.MediaPlayer2.Playlists',
@@ -121,13 +162,17 @@ class MPRISController:
         reply = next(reply.objects)
         for x in reply:
             x[0] = str(x[0])
-        print(reply)
         return reply
 
 
 
     # TrackList
     async def get_tracks_metadata(self, name, track_ids):
+        """ Get the metadata for the given track ids, given as a list of strings.
+            If it can't (e.g. the media player doesn't support this), nothing happens.
+            Note: the track ids here are object path
+        """
+
         request = dbus.Message.new_method_call(destination = dbus.valid_bus_name("org.mpris.MediaPlayer2." + name),
                                                 path = "/org/mpris/MediaPlayer2",
                                                 iface = 'org.mpris.MediaPlayer2.TrackList',
@@ -139,6 +184,12 @@ class MPRISController:
         return reply
 
     async def add_track(self, name, uri, after_track, set_as_current ):
+        """ Add a track given the file uri, give it a position, and potentially set it as current playing.
+            If it can't (e.g. the media player doesn't support this), nothing happens.
+            note: after_track is an object path
+        """
+        
+
         request = dbus.Message.new_method_call(destination = dbus.valid_bus_name("org.mpris.MediaPlayer2." + name),
                                                 path = "/org/mpris/MediaPlayer2",
                                                 iface = 'org.mpris.MediaPlayer2.TrackList',
@@ -148,6 +199,10 @@ class MPRISController:
 
 
     async def remove_track(self, name, track_id):
+        """ Remove track <track_id> where track_id is the object path of the track
+            If it can't (e.g. the media player doesn't support this), nothing happens.
+            
+        """
         request = dbus.Message.new_method_call(destination = dbus.valid_bus_name("org.mpris.MediaPlayer2." + name),
                                                 path = "/org/mpris/MediaPlayer2",
                                                 iface = 'org.mpris.MediaPlayer2.TrackList',
@@ -157,6 +212,10 @@ class MPRISController:
 
 
     async def go_to(self, name, track_id):
+        """ Start playing a specific track
+            If it can't (e.g. the media player doesn't support this), nothing happens.
+            
+        """
         request = dbus.Message.new_method_call(destination = dbus.valid_bus_name("org.mpris.MediaPlayer2." + name),
                                                 path = "/org/mpris/MediaPlayer2",
                                                 iface = 'org.mpris.MediaPlayer2.TrackList',
@@ -165,6 +224,9 @@ class MPRISController:
         await self.conn.connection.send_await_reply(request)
 
     def listen_track_list_replaced(self, fun):
+        """ Create an event listener for the TrackListReplaced event.
+
+        """
         self.conn.listen_signal(path = "/org/mpris/MediaPlayer2",
                                 fallback = False,
                                 interface = "org.mpris.MediaPlayer2.TrackList",
@@ -172,6 +234,9 @@ class MPRISController:
                                 func = fun)
 
     def listen_track_added(self, fun):
+        """ Create an event listener for the TrackAdded event.
+
+        """
         self.conn.listen_signal(path = "/org/mpris/MediaPlayer2",
                                 fallback = False,
                                 interface = "org.mpris.MediaPlayer2.TrackList",
@@ -180,6 +245,9 @@ class MPRISController:
 
 
     def listen_track_removed(self, fun):
+        """ Create an event listener for the TrackRemoved event.
+
+        """
         self.conn.listen_signal(path = "/org/mpris/MediaPlayer2",
                                 fallback = False,
                                 interface = "org.mpris.MediaPlayer2.TrackList",
@@ -188,23 +256,12 @@ class MPRISController:
 
 
     def listen_track_metadata_changed(self, fun):
+        """ Create an event listener for the TrackMetadataChanged event.
+
+        """
         self.conn.listen_signal(path = "/org/mpris/MediaPlayer2",
                                 fallback = False,
                                 interface = "org.mpris.MediaPlayer2.TrackList",
                                 name = "TrackMetadataChanged",
                                 func = fun)
 
-
-
-if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    s = MPRISController()
-    loop.run_until_complete(s.connect())
-    s.listen_propchanged(extras.propchanged)
-    s.listen_playlist_changed(extras.playlist_changed)
-    s.listen_track_added(extras.track_added)
-    s.listen_track_removed(extras.track_removed)
-    s.listen_track_metadata_changed(extras.track_metadata_changed)
-    s.listen_seeked(extras.seeked)
-    loop.run_until_complete(s.go_to('HTidal', "/org/mpris/MediaServer/track/adfasdf"))
-    loop.run_forever()
